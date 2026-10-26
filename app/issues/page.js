@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '../../lib/store';
@@ -57,7 +57,7 @@ const PILL = { nudge: 'Waiting', unstick: 'Needs reviewer', reverted: 'Rejected'
 
 // Need your input: Ziki's filter pills, then plain rows, like GitHub's notifications.
 function NeedInput() {
-  const { fixes, proposed, dispatch } = useStore();
+  const { fixes, proposed, dispatch, autoSend } = useStore();
   const gate = useSearchParams().get('gate');
   const gateLabel = GATES.find((g) => g.key === gate)?.label;
   const [modal, setModal] = useState(null);
@@ -67,6 +67,8 @@ function NeedInput() {
   const kinds = ['nudge', 'unstick', 'reverted'].filter((k) => needs.some((f) => f.needs === k));
   const kind = kinds.includes(pick) ? pick : kinds[0];
   const items = needs.filter((f) => f.needs === kind);
+  // With Auto-send on, the agent's message goes out straight away. Off, the person reads the draft first.
+  const startSend = (k, its) => (autoSend ? dispatch({ type: 'bulk', needs: k, ids: its.map((f) => f.id) }) : setSend({ kind: k, items: its }));
   if (!kinds.length) return <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>;
   return (
     <>
@@ -79,7 +81,13 @@ function NeedInput() {
             </button>
           ))}
         </span>
-        {kind !== 'reverted' && <button type="button" className="linkbtn" onClick={() => setSend({ kind, items })}>{kind === 'nudge' ? 'Message all' : 'Ask for all'} {items.length}</button>}
+        <span className="pillright">
+          {kind !== 'reverted' && <button type="button" className="linkbtn" onClick={() => startSend(kind, items)}>{kind === 'nudge' ? 'Message all' : 'Ask for all'} {items.length}</button>}
+          <label className="switch" title="On: the agent's messages are sent straight away. Off: you read each draft first.">
+            <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
+            <span className="track" aria-hidden="true" /> Auto-send
+          </label>
+        </span>
       </div>
       <ul className="rlist">
         {items.map((f) => (
@@ -89,7 +97,7 @@ function NeedInput() {
               <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
               <span className="meta">#{f.number} · {kind === 'reverted' ? 'Note ready' : f.since}</span>
             </span>
-            <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={(k, its) => setSend({ kind: k, items: its })} /></span>
+            <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={startSend} /></span>
           </li>
         ))}
       </ul>
@@ -136,7 +144,7 @@ function Updates() {
 
 // Releases: Ziki's own filter pills (one per stage), then a plain list of rows, like GitHub's lists.
 function Releases() {
-  const { fixes, dispatch } = useStore();
+  const { fixes, dispatch, autoSend } = useStore();
   const [stage, setStage] = useState('central');
   const [all, setAll] = useState(false);
   const [modal, setModal] = useState(null);
@@ -163,7 +171,7 @@ function Releases() {
               <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
               <span className="meta">#{f.number} · {f.state === 'needs-you' ? (f.needs === 'reverted' ? 'Rejected, note ready' : REASON[f.needs]) : 'On its way'} · {f.since}</span>
             </span>
-            {f.state === 'needs-you' && <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={(kind, its) => setSend({ kind, items: its })} /></span>}
+            {f.state === 'needs-you' && <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={(kind, its) => (autoSend ? dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) }) : setSend({ kind, items: its }))} /></span>}
           </li>
         ))}
         {rows.length === 0 && <li className="rrow"><span className="muted">Nothing at this stage.</span></li>}
@@ -186,6 +194,17 @@ function Releases() {
       )}
     </>
   );
+}
+
+// A short confirmation after something is sent.
+function Toast() {
+  const { notice, dispatch } = useStore();
+  useEffect(() => {
+    if (!notice) return undefined;
+    const id = setTimeout(() => dispatch({ type: 'clearNotice' }), 4000);
+    return () => clearTimeout(id);
+  }, [notice, dispatch]);
+  return notice ? <div className="toast" role="status">✓ {notice}</div> : null;
 }
 
 function InboxView() {
@@ -223,6 +242,7 @@ function InboxView() {
           </Link>
         ))}
       </nav>
+      <Toast />
       <div className="panel">
         {active === 'need' && <NeedInput />}
         {active === 'updates' && <Updates />}

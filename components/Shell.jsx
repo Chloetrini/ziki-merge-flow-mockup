@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useStore } from '../lib/store';
 import { AGENTS } from '../lib/data';
@@ -8,6 +8,14 @@ import { Icon, Chip } from './Marks';
 export default function Shell({ children }) {
   const { proposed, feed, dispatch } = useStore();
   const [open, setOpen] = useState(null);
+  const [dark, setDark] = useState(false);
+  useEffect(() => {
+    try { if (localStorage.getItem('ziki-theme') === 'dark') setDark(true); } catch {}
+  }, []);
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    try { localStorage.setItem('ziki-theme', dark ? 'dark' : 'light'); } catch {}
+  }, [dark]);
   const toggle = (k) => setOpen(open === k ? null : k);
   const outcome = feed.filter((u) => u.kind !== 'you' && u.kind !== 'agent').slice(0, 3);
 
@@ -27,6 +35,7 @@ export default function Shell({ children }) {
             <Link href="/issues"><Icon name="security" /> Security</Link>
           </nav>
           <div className="right">
+            <button className="pill" type="button" aria-pressed={dark} onClick={() => setDark(!dark)}>{dark ? 'Light mode' : 'Dark mode'}</button>
             <button className="pill" type="button" aria-expanded={open === 'agents'} onClick={() => toggle('agents')}>
               <Icon name="robot" /> Agents <Icon name="chev" />
             </button>
@@ -66,12 +75,12 @@ export default function Shell({ children }) {
       <div className="banner">
         <div className="banner-in">
           <strong>Design proposal mock-up</strong>
-          <span>Sample data, not connected to the real Ziki.</span>
+          <span>Sample data, not connected to Ziki.</span>
           <span className="seg" role="group" aria-label="Which version to show">
             <button type="button" aria-pressed={!proposed} onClick={() => dispatch({ type: 'setProposed', value: false })}>Current Ziki</button>
             <button type="button" aria-pressed={proposed} onClick={() => dispatch({ type: 'setProposed', value: true })}>With proposal</button>
           </span>
-          <span><Chip /> marks what is new. <Link href="/proposal">Read the proposal</Link></span>
+          <span><Chip /> marks what is new. <Link href="/proposal">Proposal</Link></span>
         </div>
       </div>
       {children}

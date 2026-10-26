@@ -3,57 +3,133 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '../../lib/store';
-import { REAL_ROWS, GATES, AGENTS, stageLabel } from '../../lib/data';
-import { Chip, Icon, Prop } from '../../components/Marks';
+import { REAL_ROWS, GATES, stageLabel } from '../../lib/data';
+import { Chip, Icon } from '../../components/Marks';
 import ReasonModal from '../../components/ReasonModal';
 
 const KIND = {
-  done: ['Done', 'k-done'], moved: ['Moved on', 'k-moved'], waiting: ['Waiting', 'k-waiting'],
-  reverted: ['Reverted', 'k-reverted'], live: ['Live', 'k-live'], you: ['You', 'k-you'], agent: ['Agent', 'k-agent'],
+  moved: ['On its way', 'k-moved'], waiting: ['Waiting', 'k-waiting'], reverted: ['Reverted', 'k-reverted'],
 };
 
-function Ask({ f, dispatch, onReason }) {
-  const [text, setText] = useState('');
+// What each kind of stuck fix needs from a person: one title, one action.
+const GROUPS = {
+  nudge: { title: (n) => `${n} waiting at central staging 2+ days`, act: (n) => `Message maintainer (${n})`, secondary: (n) => `Escalate (${n})`, row: 'Message' },
+  unstick: { title: (n) => `${n} need a second reviewer`, act: (n) => `Ask reviewers (${n})`, row: 'Ask' },
+  reverted: { title: (n) => `${n} reverted`, act: (n) => `Approve notes (${n})`, row: 'Approve' },
+};
+
+// Where a fix is in the release path, or null if it has not reached the first gate.
+const ORDER = ['central', 'staging', 'production'];
+function releaseLoc(f) {
+  const st = (k) => f.steps.find((x) => x.key === k)?.status;
+  if (f.state === 'stopped') return null;
+  for (let i = 0; i < 3; i++) {
+    const v = st(ORDER[i]);
+    if (v === 'reverted') return { gate: ORDER[i], kind: 'reverted' };
+    if (v === 'active') return { gate: ORDER[i], kind: 'arriving' };
+    if (v === 'pending' || !v) { const prev = i === 0 ? st('decision') : st(ORDER[i - 1]); return prev === 'done' ? { gate: ORDER[i], kind: 'waiting' } : null; }
+  }
+  return { gate: 'production', kind: 'live' };
+}
+
+const TAG = { nudge: 'Waiting', unstick: 'Needs reviewer', reverted: 'Reverted' };
+
+// One button per fix, named for what it does. A reverted fix opens its note first.
+function RowAction({ f, dispatch, onReview }) {
+  if (f.needs === 'nudge') return <button className="btn small-btn" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Message maintainer</button>;
+  if (f.needs === 'unstick') return <button className="btn small-btn" onClick={() => dispatch({ type: 'unstick', id: f.id })}>Ask reviewer</button>;
+  if (onReview) return <button className="btn small-btn" onClick={() => onReview(f)}>Review note</button>;
+  return <button className="btn small-btn" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve note</button>;
+}
+
+function Group({ kind, items, dispatch, onReview }) {
+  const [open, setOpen] = useState(false);
+  const [off, setOff] = useState({});
+  const g = GROUPS[kind];
+  const picked = items.filter((f) => !off[f.id]);
+  const n = picked.length;
+  const run = (escalate) => dispatch({ type: 'bulk', needs: kind, ids: picked.map((f) => f.id), escalate });
   return (
-    <li className="ask">
-      <div className="row1" style={{ padding: 0 }}>
-        <span className="who">{f.agent} asks</span><span className="muted small">{f.since}</span>
+    <li className="group">
+      <div className="group-head">
+        <span className="gcount" aria-hidden="true">{items.length}</span>
+        <strong className="gtitle">{g.title(items.length)}</strong>
+        <div className="gbtns">
+          {kind === 'reverted' && !open ? (
+            <button className="btn primary" onClick={() => setOpen(true)}>Review notes ({items.length})</button>
+          ) : (
+            <>
+              <button className="btn primary" disabled={!n} onClick={() => run(false)}>{g.act(n)}</button>
+              {g.secondary && <button className="btn ghost" disabled={!n} onClick={() => run(true)}>{g.secondary(n)}</button>}
+            </>
+          )}
+          <button className="btn ghost" aria-expanded={open} onClick={() => setOpen(!open)}>{open ? 'Hide' : 'Show'}</button>
+        </div>
       </div>
-      <p className="says">&ldquo;{f.agentSays}&rdquo;</p>
-      <p className="muted small"><Link href={`/issues/${f.number}`}>#{f.number} {f.title}</Link></p>
-      <div className="btns">
-        {f.needs === 'nudge' && (<><button className="btn primary" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Message the maintainer</button><button className="btn ghost" onClick={() => dispatch({ type: 'nudge', id: f.id, escalate: true })}>Escalate to the project lead</button></>)}
-        {f.needs === 'unstick' && <button className="btn primary" onClick={() => dispatch({ type: 'unstick', id: f.id })}>Yes, ask someone else</button>}
-        {f.needs === 'reverted' && <button className="btn primary" onClick={() => onReason(f)}>Tell the agent why</button>}
-      </div>
-      <form className="reply" onSubmit={(e) => { e.preventDefault(); if (!text.trim()) return; dispatch({ type: 'reply', id: f.id, text: text.trim() }); setText(''); }}>
-        <label className="sr" htmlFor={`r-${f.id}`}>Reply to {f.agent}</label>
-        <input id={`r-${f.id}`} value={text} onChange={(e) => setText(e.target.value)} placeholder={`Or tell ${f.agent} something in your own words`} />
-        <button className="btn ghost" type="submit" disabled={!text.trim()}>Send</button>
-      </form>
+      {open && (
+        <ul className="grows">
+          {items.map((f) => (
+            <li key={f.id}>
+              <input type="checkbox" aria-label={`Include #${f.number}`} checked={!off[f.id]} onChange={() => setOff({ ...off, [f.id]: !off[f.id] })} />
+              <span className="vote">{f.votes}<small>▲</small></span>
+              <span className="rowmain">
+                <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
+                <span className="meta">#{f.number} {f.labels.join(' · ')} · {f.since}</span>
+                {kind === 'reverted' && <span className="note-line"><strong>Went wrong:</strong> {f.proposedReason} <strong>Rule:</strong> {f.proposedRule}</span>}
+              </span>
+              <span className={`rtag ${kind}`}>{TAG[kind]}</span>
+              <span className="rowbtns">
+                {kind === 'reverted' && <button className="btn ghost small-btn" onClick={() => onReview(f)}>Edit</button>}
+                <RowAction f={f} dispatch={dispatch} />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </li>
+  );
+}
+
+function Stats() {
+  const { fixes } = useStore();
+  const moving = fixes.filter((f) => f.state === 'moving').length;
+  const live = fixes.filter((f) => f.state === 'live').length;
+  const reverted = fixes.filter((f) => f.steps.some((s) => s.status === 'reverted')).length;
+  const needs = fixes.filter((f) => f.state === 'needs-you').length;
+  return (
+    <ul className="stats" aria-label="Summary">
+      <li className={needs ? 'hot' : ''}><Link href="/issues"><strong>{needs}</strong><span>need you →</span></Link></li>
+      <li><strong>{moving}</strong><span>on their way</span></li>
+      <li><strong>{reverted}</strong><span>reverted</span></li>
+      <li><strong>{live}</strong><span>live</span></li>
+    </ul>
   );
 }
 
 function NeedInput() {
   const { fixes, proposed, dispatch } = useStore();
+  const gate = useSearchParams().get('gate');
+  const gateLabel = GATES.find((g) => g.key === gate)?.label;
   const [modal, setModal] = useState(null);
-  const needs = proposed ? fixes.filter((f) => f.state === 'needs-you') : [];
+  const needs = proposed ? fixes.filter((f) => f.state === 'needs-you' && (!gateLabel || releaseLoc(f)?.gate === gate)) : [];
+  const groups = ['nudge', 'unstick', 'reverted'].map((k) => [k, needs.filter((f) => f.needs === k)]).filter(([, items]) => items.length).sort((a, b) => b[1].length - a[1].length);
   return (
     <>
-      {needs.length === 0 ? (
+      {groups.length === 0 ? (
         <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>
       ) : (
         <>
-          <p className="muted small"><Chip kind="prop">Proposed</Chip> The Inbox also covers what happens after a fix leaves Ziki: a fix stuck at a release gate, a reviewer that is stuck, or a revert nobody explained.</p>
-          <ul className="asks">{needs.map((f) => <Ask key={f.id} f={f} dispatch={dispatch} onReason={setModal} />)}</ul>
+          {proposed && <Stats />}
+          {gateLabel && <p className="filterbar">Showing only <strong>{gateLabel}</strong> <Link href="/issues">Show all</Link></p>}
+          <ul className="groups">{groups.map(([k, items]) => <Group key={k} kind={k} items={items} dispatch={dispatch} onReview={setModal} />)}</ul>
         </>
       )}
       {modal && (
         <ReasonModal
-          title={`Why was #${modal.number} reverted?`}
-          intro="Your answer is added to the agent's standing instructions, so it does not repeat the mistake, and it resubmits the fix in smaller batches."
-          confirmLabel="Send to the agent"
+          title={`#${modal.number} was reverted`}
+          reason={modal.proposedReason}
+          rule={modal.proposedRule}
+          confirmLabel="Approve and resubmit"
           onClose={() => setModal(null)}
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
         />
@@ -62,117 +138,74 @@ function NeedInput() {
   );
 }
 
+// Updates: what the agents did. Anything still waiting on you has its button right here.
 function Updates() {
-  const { fixes, feed } = useStore();
+  const { fixes, feed, dispatch } = useStore();
+  const [modal, setModal] = useState(null);
   const byId = Object.fromEntries(fixes.map((f) => [f.id, f]));
-  const moving = fixes.filter((f) => f.state === 'moving').length;
-  const live = fixes.filter((f) => f.state === 'live').length;
-  const reverted = fixes.filter((f) => f.steps.some((s) => s.status === 'reverted')).length;
-  const needs = fixes.filter((f) => f.state === 'needs-you').length;
+  const rows = feed.filter((u) => u.kind in KIND);
   return (
     <>
-      <p className="muted small"><Chip kind="prop">Proposed</Chip> Today, Ziki's notifications are comments. Nothing tells you what happened to a fix after its pull request: merged, on staging, live, or reverted. Here the agents report it, in their own words.</p>
-      <ul className="stats" aria-label="Summary">
-        <li><strong>{moving}</strong><span>moving on their own</span></li>
-        <li><strong>{live}</strong><span>live</span></li>
-        <li><strong>{reverted}</strong><span>reverted</span></li>
-        <li className={needs ? 'hot' : ''}><strong>{needs}</strong><span>{needs === 1 ? 'needs' : 'need'} my answer</span></li>
-      </ul>
+      <Stats />
       <ul className="feed">
-        {feed.map((u) => {
-          const [label, cls] = KIND[u.kind] || KIND.done;
+        {rows.slice(0, 12).map((u) => {
+          const [label, cls] = KIND[u.kind];
           const fix = byId[u.fixId];
+          const needsYou = fix && fix.state === 'needs-you';
           return (
             <li key={u.id} className="update">
               <span className={`kind ${cls}`}>{label}</span>
-              <div style={{ flex: 1 }}>
-                <p><strong>{u.agent}:</strong> {u.text}</p>
-                {fix && <Link className="small" href={`/issues/${fix.number}`}>#{fix.number} {fix.title}</Link>}
-              </div>
+              <span className="utext">{fix ? <Link href={`/issues/${fix.number}`}><span className="num">#{fix.number}</span> {fix.title}</Link> : <strong>{u.agent}</strong>}<span className="muted small"> · {u.text}</span></span>
               <span className="muted small">{u.time}</span>
+              {needsYou ? <RowAction f={fix} dispatch={dispatch} onReview={setModal} /> : <span />}
             </li>
           );
         })}
       </ul>
+      {modal && (
+        <ReasonModal
+          title={`#${modal.number} was reverted`}
+          reason={modal.proposedReason}
+          rule={modal.proposedRule}
+          confirmLabel="Approve and resubmit"
+          onClose={() => setModal(null)}
+          onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
+        />
+      )}
     </>
   );
 }
 
+// Releases: where fixes are. Anything stuck links to the first tab.
 function Releases() {
   const { fixes } = useStore();
-  const ORDER = ['central', 'staging', 'production'];
-  const st = (f, k) => f.steps.find((x) => x.key === k)?.status;
-  const loc = (f) => {
-    if (f.state === 'stopped') return null;
-    for (let i = 0; i < 3; i++) {
-      const v = st(f, ORDER[i]);
-      if (v === 'reverted') return { gate: ORDER[i], kind: 'reverted' };
-      if (v === 'active') return { gate: ORDER[i], kind: 'arriving' };
-      if (v === 'pending' || !v) { const prev = i === 0 ? st(f, 'decision') : st(f, ORDER[i - 1]); return prev === 'done' ? { gate: ORDER[i], kind: 'waiting' } : null; }
-    }
-    return { gate: 'production', kind: 'live' };
-  };
-  const placed = fixes.map((f) => ({ f, loc: loc(f) }));
-  const before = placed.filter((p) => !p.loc && p.f.state !== 'stopped' && p.f.state !== 'rolled-back').length;
-  const KINDS = [['arriving', 'Arriving now'], ['waiting', 'Waiting for this gate'], ['reverted', 'Reverted here'], ['live', 'Live']];
+  const placed = fixes.map((f) => ({ f, loc: releaseLoc(f) }));
   return (
-    <>
-      <p className="muted small"><Chip kind="prop">Proposed</Chip> Every fix at every gate, and who holds it, so nobody has to ask a maintainer on GitHub. {before > 0 && <>{before} more {before === 1 ? 'fix has' : 'fixes have'} not reached central staging yet.</>}</p>
-      <div className="gates">
-        {GATES.map((g) => (
+    <div className="gates">
+      {GATES.map((g) => {
+        const here = placed.filter((p) => p.loc && p.loc.gate === g.key);
+        const count = (k) => here.filter((p) => p.loc.kind === k).length;
+        const stuck = here.filter((p) => p.f.state === 'needs-you').length;
+        const rest = here.filter((p) => p.loc.kind !== 'live');
+        return (
           <section key={g.key} className="card gate" aria-labelledby={`g-${g.key}`}>
             <h3 id={`g-${g.key}`}>{g.label}</h3>
-            <p className="muted small">Held by: {g.holder}</p>
-            {KINDS.map(([k, label]) => {
-              const items = placed.filter((p) => p.loc && p.loc.gate === g.key && p.loc.kind === k).map((p) => p.f);
-              if (!items.length) return null;
-              return (<div key={k}><div className={`mini ${k === 'reverted' ? 'warn' : ''}`}>{label}</div><ul className="glist">{items.map((f) => <li key={f.id}><Link href={`/issues/${f.number}`}><span className="num">#{f.number}</span> {f.title}</Link></li>)}</ul></div>);
-            })}
-            {!placed.some((p) => p.loc && p.loc.gate === g.key) && <p className="muted small">Nothing here</p>}
+            <ul className="gcounts">
+              <li><strong>{count('arriving')}</strong> on the way</li>
+              <li className={count('reverted') ? 'warn' : ''}><strong>{count('reverted')}</strong> reverted</li>
+              {g.key === 'production' && <li><strong>{count('live')}</strong> live</li>}
+            </ul>
+            {stuck > 0 ? <Link className="btn primary" href={`/issues?gate=${g.key}`}>{stuck} need you →</Link> : <p className="muted small">Nothing stuck.</p>}
+            {rest.length > 0 && (
+              <details>
+                <summary>Show {rest.length}</summary>
+                <ul className="glist">{rest.map(({ f }) => <li key={f.id}><Link href={`/issues/${f.number}`}><span className="num">#{f.number}</span> {f.title}</Link></li>)}</ul>
+              </details>
+            )}
           </section>
-        ))}
-      </div>
-    </>
-  );
-}
-
-function Instructions() {
-  const { instructions, rules, dispatch } = useStore();
-  const [text, setText] = useState('');
-  const [talk, setTalk] = useState('');
-  return (
-    <>
-      <p className="muted small"><Chip kind="have" /> Ziki already lets you give each agent standing instructions and send it messages, under Settings, Agents, Messages. <Chip kind="prop">Proposed</Chip> Bring them into the Inbox, next to the work, and add reasons from reverts automatically.</p>
-
-      <div className="card" style={{ marginBottom: '.8rem' }}>
-        <div className="eyebrow">Send a message to my agents <Chip kind="have">Exists, moved here</Chip></div>
-        <form className="reply" style={{ marginTop: 0 }} onSubmit={(e) => { e.preventDefault(); if (!talk.trim()) return; dispatch({ type: 'talk', text: talk.trim() }); setTalk(''); }}>
-          <label className="sr" htmlFor="talk">Message to my agents</label>
-          <input id="talk" value={talk} onChange={(e) => setTalk(e.target.value)} placeholder='For example: "what happened to my fixes?" or "find me more work"' />
-          <button className="btn primary" type="submit" disabled={!talk.trim()}>Send</button>
-        </form>
-      </div>
-
-      <div className="card" style={{ marginBottom: '.8rem' }}>
-        <div className="eyebrow">Standing instructions <Chip kind="have">Exists, moved here</Chip></div>
-        <ul className="decisions">
-          {instructions.map((i) => (
-            <li key={i.id}><span>{i.text}</span><button className="btn ghost" onClick={() => dispatch({ type: 'removeInstruction', id: i.id })} aria-label={`Remove: ${i.text}`}>Remove</button></li>
-          ))}
-        </ul>
-        <form className="reply" onSubmit={(e) => { e.preventDefault(); if (!text.trim()) return; dispatch({ type: 'addInstruction', text: text.trim() }); setText(''); }}>
-          <label className="sr" htmlFor="newi">Add an instruction</label>
-          <input id="newi" value={text} onChange={(e) => setText(e.target.value)} placeholder="Add an instruction, for example: never touch the billing pages" />
-          <button className="btn" type="submit" disabled={!text.trim()}>Add</button>
-        </form>
-      </div>
-
-      <div className="card">
-        <div className="eyebrow">Added from reverts <Chip kind="prop">Proposed</Chip></div>
-        <p className="muted small">When you explain why a fix was reverted, your answer is added here and to the agent's standing instructions. This is the agents.md the team asked for.</p>
-        <ul className="decisions">{rules.map((r) => <li key={r.id}><span>{r.text}</span><span className="muted small">{r.source}</span></li>)}</ul>
-      </div>
-    </>
+        );
+      })}
+    </div>
   );
 }
 
@@ -185,28 +218,29 @@ function InboxView() {
     ['need', 'Need your input', needsN, false],
     ['updates', 'Updates', null, true],
     ['releases', 'Releases', null, true],
-    ['instructions', 'Instructions', null, true],
     ['design', 'Design feedback needed', 0, false],
     ['ideas', 'New ideas', 1, false],
   ].filter((t) => proposed || !t[3]);
   const active = TABS.find((t) => t[0] === tab) ? tab : 'need';
   return (
     <>
-      <div className="howto">
-        <div>
-          <div className="row1" style={{ padding: 0, justifyContent: 'flex-start' }}><Icon name="inbox" /><strong>How the Inbox works</strong></div>
-          <p className="muted" style={{ marginTop: '.4rem' }}>Agents work through issues on their own and stop here when they need a person: to answer a question, give feedback on a design, or weigh in on a new idea.</p>
+      {!proposed && (
+        <div className="howto">
+          <div>
+            <div className="row1" style={{ padding: 0, justifyContent: 'flex-start' }}><Icon name="inbox" /><strong>How the Inbox works</strong></div>
+            <p className="muted" style={{ marginTop: '.4rem' }}>Agents work through issues on their own and stop here when they need a person: to answer a question, give feedback on a design, or weigh in on a new idea.</p>
+          </div>
+          <div className="agentbox">
+            <div className="eyebrow">Your agents</div>
+            <div className="nm">Adloe <span className="tag">Standing by</span></div>
+            <p className="muted small">Last 30 days: 122 confirmed · 2 rejected</p>
+          </div>
         </div>
-        <div className="agentbox">
-          <div className="eyebrow">Your agents</div>
-          <div className="nm">{AGENTS[0].name} <span className="tag">Standing by</span></div>
-          <p className="muted small">{AGENTS[0].stat}</p>
-        </div>
-      </div>
-      <nav className="subtabs" aria-label="Inbox sections" style={{ paddingLeft: 0 }}>
+      )}
+      <nav className="subtabs" aria-label="Inbox sections">
         {TABS.map(([k, label, n, isNew]) => (
           <Link key={k} href={k === 'need' ? '/issues' : `/issues?tab=${k}`} className={active === k ? 'on' : ''}>
-            {label} {n !== null && <span className="count" style={{ background: '#22324f' }}>{n}</span>} {isNew && <Chip />}
+            {label} {n !== null && <span className="count">{n}</span>} {isNew && <Chip />}
           </Link>
         ))}
       </nav>
@@ -214,7 +248,6 @@ function InboxView() {
         {active === 'need' && <NeedInput />}
         {active === 'updates' && <Updates />}
         {active === 'releases' && <Releases />}
-        {active === 'instructions' && <Instructions />}
         {active === 'design' && <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on design feedback.</div>}
         {active === 'ideas' && <div className="empty"><strong>1 new idea.</strong>Not part of this mock-up.</div>}
       </div>

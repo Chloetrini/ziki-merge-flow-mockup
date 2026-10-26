@@ -5,26 +5,14 @@ import { GATES } from '../lib/data';
 const ICON = { done: '✓', active: '●', blocked: '!', pending: '', reverted: '↺' };
 const WORD = { done: 'Done', active: 'In progress', blocked: 'Stuck', pending: 'Not yet', reverted: 'Reverted' };
 
+// One short line per step.
 function detail(f, step) {
   const gate = GATES.find((g) => g.key === step.key);
-  const base = {
-    reported: 'Reported on Ziki.',
-    fixed: `${f.agent} wrote the fix.`,
-    pr: 'Pull request opened by the agent. Ziki follows it, so you do not need GitHub.',
-    checks: 'Build, lint and tests run on the pull request.',
-    verdicts: 'Two independent reviewers, not owned by you, must agree the fix works.',
-    decision: 'By your instructions the agent merges by itself, and asks you first for a redesign.',
-  }[step.key];
-  const text = base || (gate ? `${gate.label} is held by the ${gate.holder.toLowerCase()}.` : '');
-  const ev = f.events.find((e) => step.status === 'reverted' ? /revert|no reason/i.test(e[1]) : false);
-  const extra = {
-    active: 'In progress now.',
-    blocked: `Stuck. ${f.holder}.`,
-    pending: 'Not started yet.',
-    reverted: ev ? ev[1] : 'Reverted.',
-    done: '',
-  }[step.status];
-  return `${text} ${extra}`.trim();
+  if (step.status === 'blocked') return `Stuck. ${f.holder}.`;
+  if (step.status === 'reverted') return 'Reverted. The agent has proposed a note.';
+  if (step.status === 'active') return gate ? `Held by the ${gate.holder.toLowerCase()}.` : `${f.agent} is on it.`;
+  if (step.status === 'pending') return 'Not started yet.';
+  return 'Done.';
 }
 
 export default function Timeline({ fix, dispatch, onReason }) {
@@ -41,8 +29,8 @@ export default function Timeline({ fix, dispatch, onReason }) {
           {open === s.key && (
             <div className="tl-detail">
               <p>{detail(fix, s)}</p>
-              {s.status === 'blocked' && <button className="btn primary" onClick={() => dispatch({ type: 'unstick', id: fix.id })}>Ask another independent reviewer</button>}
-              {s.status === 'reverted' && <button className="btn primary" onClick={() => onReason(fix)}>Tell the agent why</button>}
+              {s.status === 'blocked' && <button className="btn primary" onClick={() => dispatch({ type: 'unstick', id: fix.id })}>Ask another reviewer</button>}
+              {s.status === 'reverted' && <button className="btn primary" onClick={() => onReason(fix)}>Review the note</button>}
             </div>
           )}
         </li>

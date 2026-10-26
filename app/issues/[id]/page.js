@@ -29,17 +29,17 @@ export default function IssuePage({ params }) {
       <p><Link href="/issues">← Issues</Link></p>
       <h1><span className="no">#{n}</span> {title}</h1>
       <div className="labels">{labels.map((l) => <span key={l} className="label">{l}</span>)}</div>
-      <span className="upvote">▲ Upvote <span className="count" style={{ background: '#22324f' }}>{votes}</span></span>
+      <span className="upvote">▲ Upvote <span className="count">{votes}</span></span>
 
       <div className="stack">
-        {f && f.agentSays && proposed && (
+        {f && f.agentSays && f.state === 'needs-you' && proposed && (
           <section className="sect prop-edge" aria-labelledby="says">
             <h2 id="says">What the agent says <Chip /></h2>
             <p className="says">&ldquo;{f.agentSays}&rdquo;</p>
             <div className="btns">
               {f.needs === 'nudge' && (<><button className="btn primary" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Message the maintainer</button><button className="btn ghost" onClick={() => dispatch({ type: 'nudge', id: f.id, escalate: true })}>Escalate to the project lead</button></>)}
               {f.needs === 'unstick' && <button className="btn primary" onClick={() => dispatch({ type: 'unstick', id: f.id })}>Yes, ask someone else</button>}
-              {f.needs === 'reverted' && <button className="btn primary" onClick={() => setModal('resubmit')}>Tell the agent why</button>}
+              {f.needs === 'reverted' && <button className="btn primary" onClick={() => setModal('resubmit')}>Review the note</button>}
             </div>
           </section>
         )}
@@ -55,18 +55,18 @@ export default function IssuePage({ params }) {
           <section className="sect" aria-labelledby="dec">
             <h2 id="dec">Agent decisions</h2>
             <Prop>
-              <p className="small muted"><Chip kind="prop">Proposed improvement</Chip> Today these twelve verdicts are a list, and nobody checks the one that disagrees. Here the agent checks it against what is live and proposes what to do.</p>
+              <p className="small muted"><Chip kind="prop">Proposed</Chip></p>
               <div className="summary">
                 <p><strong>{confirmed} of {decisions.length} agents confirmed it is real</strong> ({decisions.filter(([, v]) => v.includes('Low')).length} Low, {confirmed - 1} Medium). 1 says it no longer reproduces.</p>
                 <div className="dissent">
                   <strong>The one that disagrees:</strong> Lahrry&rsquo;s Claude (reviewer). &ldquo;{ISSUE_148.dissent}&rdquo;
                 </div>
                 {closed[148] ? (
-                  <p className="small" style={{ color: 'var(--green)' }}>Closed as already fixed. The agents will not spend time on it. You can reopen it any time.</p>
+                  <p className="small" style={{ color: 'var(--green)' }}>Closed as already fixed. You can reopen it any time.</p>
                 ) : (
-                  <div className="ask" style={{ borderColor: '#4a3685' }}>
+                  <div className="ask" style={{ borderColor: 'var(--prop-line)' }}>
                     <span className="who">My agent checked the live site</span>
-                    <p className="says">&ldquo;The footer link on the live site now has a profile id, so the problem in this report no longer happens. I think it is already fixed. Shall I close it?&rdquo;</p>
+                    <p className="says">&ldquo;The live footer link now has a profile id. I think it is already fixed.&rdquo;</p>
                     <div className="btns">
                       <button className="btn primary" onClick={() => dispatch({ type: 'closeIssue', number: 148 })}>Close as already fixed</button>
                       <button className="btn ghost" onClick={() => dispatch({ type: 'keepOpen', number: 148 })}>Keep it open</button>
@@ -114,17 +114,15 @@ export default function IssuePage({ params }) {
             <h2 id="jr">Journey to production <Chip /></h2>
             {f ? (
               <>
-                <p className="muted small">Replaces the GitHub PR box. The agent keeps this up to date, so you never need to open GitHub to find out.</p>
                 <Timeline fix={f} dispatch={dispatch} onReason={() => setModal('resubmit')} />
                 {inFlight && (
                   <div style={{ marginTop: '.8rem' }}>
-                    <p className="muted small">Something wrong? Roll back in one click. Ziki asks why and adds your answer to the agent&rsquo;s instructions.</p>
                     <button className="btn danger" onClick={() => setModal('rollback')}>Roll back this fix</button>
                   </div>
                 )}
               </>
             ) : (
-              <p className="muted">No fix yet. Once an agent takes this issue, its journey from pull request to production appears here.</p>
+              <p className="muted">No fix yet.</p>
             )}
           </section>
         </Prop>
@@ -143,11 +141,11 @@ export default function IssuePage({ params }) {
       </div>
 
       {modal === 'rollback' && (
-        <ReasonModal title={`Roll back #${n}?`} intro="This puts the previous version back. It does not delete the fix, so it can be tried again." confirmLabel="Roll back" onClose={() => setModal(null)}
+        <ReasonModal title={`Roll back #${n}?`} reason={f.proposedReason || 'A regression appeared after this fix reached staging.'} rule={f.proposedRule || 'Test the older features on staging before moving a fix to production.'} confirmLabel="Approve and roll back" onClose={() => setModal(null)}
           onConfirm={(reason, rule) => { dispatch({ type: 'rollback', id: f.id, reason, rule }); setModal(null); }} />
       )}
       {modal === 'resubmit' && (
-        <ReasonModal title={`Why was #${n} reverted?`} intro="Your answer is added to the agent's standing instructions, and it resubmits the fix in smaller batches." confirmLabel="Send to the agent" onClose={() => setModal(null)}
+        <ReasonModal title={`#${n} was reverted`} reason={f.proposedReason || 'It was reverted and no reason was recorded.'} rule={f.proposedRule || 'Split big batches before they go to staging.'} confirmLabel="Approve and resubmit" onClose={() => setModal(null)}
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: f.id, reason, rule }); setModal(null); }} />
       )}
     </div>

@@ -450,3 +450,13 @@ details summary { cursor: pointer; color: var(--link); margin-top: .8rem; font-s
 
 /* confirmation after something is sent */
 .toast { position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%); background: var(--surface); color: var(--text); border: 1px solid var(--gh-green); border-radius: 999px; padding: .45rem 1rem; font-size: .82rem; box-shadow: 0 8px 30px rgb(0 0 0 / .35); z-index: 40; }
+
+/* auto-send switch */
+.pillright { display: flex; align-items: center; gap: 1rem; }
+.switch { display: inline-flex; align-items: center; gap: .45rem; font-size: .78rem; font-weight: 600; color: var(--text); cursor: pointer; padding: .2rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .track { width: 28px; height: 16px; border-radius: 999px; background: var(--border); position: relative; transition: background .15s; }
+.switch .track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: transform .15s; }
+.switch input:checked + .track { background: var(--gh-green); }
+.switch input:checked + .track::after { transform: translateX(12px); background: #fff; }
+.switch input:focus-visible + .track { outline: 2px solid var(--link); outline-offset: 2px; }

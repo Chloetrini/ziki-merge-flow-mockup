@@ -32,6 +32,10 @@ export const Icon = ({ name }) => {
     undo: <><path d="M9 7L5 11l4 4" /><path d="M5 11h9a5 5 0 010 8h-3" /></>,
     arrow: <><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></>,
     check: <path d="M5 12l4 4 10-10" />,
+    'gh-open': <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" /></>,
+    'gh-done': <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l3 3 5-6" /></>,
+    'gh-closed': <><circle cx="12" cy="12" r="9" /><path d="M9 9l6 6M15 9l-6 6" /></>,
+    'gh-merge': <><circle cx="7" cy="6" r="2" /><circle cx="7" cy="18" r="2" /><circle cx="17" cy="12" r="2" /><path d="M7 8v8M9 12h6" /></>,
     alert: <><circle cx="12" cy="12" r="8" /><path d="M12 8v5M12 16h.01" /></>,
   }[name];
   return (

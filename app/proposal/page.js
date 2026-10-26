@@ -11,7 +11,7 @@ export default function Proposal() {
 
       <h2>The problem</h2>
       <p>
-        Agents do the work. But after a fix leaves for GitHub, the person who owns the agent cannot see what happens to it, and when it is stuck or reverted
+        Agents do the work. But after a fix leaves for GitHub, the person who owns the agent cannot see what happens to it, and when it is stuck or rejected
         they find out late, by accident, and with no way to act on it from Ziki.
       </p>
       {MY_PROBLEM.map((t, i) => <p key={i}>{t}</p>)}
@@ -23,8 +23,8 @@ export default function Proposal() {
       <ol>
         <li><strong>The Inbox shows only what needs me, as a few groups.</strong> Each group says why in one line and has one button: &ldquo;19 waiting at central staging 2+ days&rdquo; &rarr; <em>Message maintainer (19)</em>. Open a group to see its fixes as normal Ziki rows, and untick any you want to leave out. It still reads the same with 200 fixes.</li>
         <li><strong>Every status has an action.</strong> In Updates, a fix that is waiting on me has its button on the row. Releases shows counts per stage, with a link to just the fixes stuck there. Finished work is only a number.</li>
-        <li><strong>A revert is explained by the agent, not by me.</strong> The agent proposes what went wrong and a rule for next time. I approve it or edit it, and it is added to the Project notes.</li>
-        <li><strong>A journey on each fix after its pull request</strong>, one line per step, with a button on the step that is stuck or reverted.</li>
+        <li><strong>A fix that is rejected is explained by the agent, not by me.</strong> The agent proposes what went wrong and a rule for next time. I approve it or edit it, and it is added to the Project notes.</li>
+        <li><strong>A journey on each fix after its pull request</strong>, one line per step, with a button on the step that is stuck or rejected.</li>
       </ol>
 
       <h2>What Ziki already has</h2>

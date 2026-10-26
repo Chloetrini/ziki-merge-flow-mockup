@@ -3,13 +3,13 @@ import { useState } from 'react';
 import { GATES } from '../lib/data';
 
 const ICON = { done: '✓', active: '●', blocked: '!', pending: '', reverted: '↺' };
-const WORD = { done: 'Done', active: 'In progress', blocked: 'Stuck', pending: 'Not yet', reverted: 'Reverted' };
+const WORD = { done: 'Done', active: 'In progress', blocked: 'Stuck', pending: 'Not yet', reverted: 'Rejected' };
 
 // One short line per step.
 function detail(f, step) {
   const gate = GATES.find((g) => g.key === step.key);
   if (step.status === 'blocked') return `Stuck. ${f.holder}.`;
-  if (step.status === 'reverted') return 'Reverted. The agent has proposed a note.';
+  if (step.status === 'reverted') return 'Rejected. The agent has proposed a note.';
   if (step.status === 'active') return gate ? `Held by the ${gate.holder.toLowerCase()}.` : `${f.agent} is on it.`;
   if (step.status === 'pending') return 'Not started yet.';
   return 'Done.';

@@ -6,7 +6,6 @@ import { useStore } from '../../lib/store';
 import { REAL_ROWS, GATES } from '../../lib/data';
 import { Chip, Icon } from '../../components/Marks';
 import ReasonModal from '../../components/ReasonModal';
-import SendModal from '../../components/SendModal';
 
 const KIND = { moved: 1, waiting: 1, reverted: 1, live: 1 };
 
@@ -57,18 +56,17 @@ const PILL = { nudge: 'Waiting', unstick: 'Needs reviewer', reverted: 'Rejected'
 
 // Need your input: Ziki's filter pills, then plain rows, like GitHub's notifications.
 function NeedInput() {
-  const { fixes, proposed, dispatch, autoSend } = useStore();
+  const { fixes, proposed, dispatch } = useStore();
   const gate = useSearchParams().get('gate');
   const gateLabel = GATES.find((g) => g.key === gate)?.label;
   const [modal, setModal] = useState(null);
-  const [send, setSend] = useState(null);
   const [pick, setPick] = useState(null);
   const needs = proposed ? fixes.filter((f) => f.state === 'needs-you' && (!gateLabel || releaseLoc(f)?.gate === gate)) : [];
   const kinds = ['nudge', 'unstick', 'reverted'].filter((k) => needs.some((f) => f.needs === k));
   const kind = kinds.includes(pick) ? pick : kinds[0];
   const items = needs.filter((f) => f.needs === kind);
-  // With Auto-send on, the agent's message goes out straight away. Off, the person reads the draft first.
-  const startSend = (k, its) => (autoSend ? dispatch({ type: 'bulk', needs: k, ids: its.map((f) => f.id) }) : setSend({ kind: k, items: its }));
+  // The agent's message goes out straight away.
+  const startSend = (k, its) => dispatch({ type: 'bulk', needs: k, ids: its.map((f) => f.id) });
   if (!kinds.length) return <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>;
   return (
     <>
@@ -81,13 +79,7 @@ function NeedInput() {
             </button>
           ))}
         </span>
-        <span className="pillright">
-          {kind !== 'reverted' && <button type="button" className="linkbtn" onClick={() => startSend(kind, items)}>{kind === 'nudge' ? 'Message all' : 'Ask for all'} {items.length}</button>}
-          <label className="switch" title="On: the agent's messages are sent straight away. Off: you read each draft first.">
-            <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
-            <span className="track" aria-hidden="true" /> Auto-send
-          </label>
-        </span>
+        {kind !== 'reverted' && <button type="button" className="linkbtn" onClick={() => startSend(kind, items)}>{kind === 'nudge' ? 'Message all' : 'Ask for all'} {items.length}</button>}
       </div>
       <ul className="rlist">
         {items.map((f) => (
@@ -110,10 +102,6 @@ function NeedInput() {
           onClose={() => setModal(null)}
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
         />
-      )}
-      {send && (
-        <SendModal kind={send.kind} items={send.items} onClose={() => setSend(null)}
-          onSend={() => { dispatch({ type: 'bulk', needs: send.kind, ids: send.items.map((f) => f.id) }); setSend(null); }} />
       )}
     </>
   );
@@ -144,11 +132,10 @@ function Updates() {
 
 // Releases: Ziki's own filter pills (one per stage), then a plain list of rows, like GitHub's lists.
 function Releases() {
-  const { fixes, dispatch, autoSend } = useStore();
+  const { fixes, dispatch } = useStore();
   const [stage, setStage] = useState('central');
   const [all, setAll] = useState(false);
   const [modal, setModal] = useState(null);
-  const [send, setSend] = useState(null);
   const placed = fixes.map((f) => ({ f, loc: releaseLoc(f) }));
   const inStage = (g) => placed.filter((p) => p.loc && p.loc.gate === g && p.loc.kind !== 'live').map((p) => p.f);
   const live = placed.filter((p) => p.loc && p.loc.kind === 'live').length;
@@ -171,7 +158,7 @@ function Releases() {
               <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
               <span className="meta">#{f.number} · {f.state === 'needs-you' ? (f.needs === 'reverted' ? 'Rejected, note ready' : REASON[f.needs]) : 'On its way'} · {f.since}</span>
             </span>
-            {f.state === 'needs-you' && <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={(kind, its) => (autoSend ? dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) }) : setSend({ kind, items: its }))} /></span>}
+            {f.state === 'needs-you' && <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={(kind, its) => dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) })} /></span>}
           </li>
         ))}
         {rows.length === 0 && <li className="rrow"><span className="muted">Nothing at this stage.</span></li>}
@@ -187,10 +174,6 @@ function Releases() {
           onClose={() => setModal(null)}
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
         />
-      )}
-      {send && (
-        <SendModal kind={send.kind} items={send.items} onClose={() => setSend(null)}
-          onSend={() => { dispatch({ type: 'bulk', needs: send.kind, ids: send.items.map((f) => f.id) }); setSend(null); }} />
       )}
     </>
   );

@@ -8,14 +8,14 @@ import { Icon, Chip } from './Marks';
 export default function Shell({ children }) {
   const { proposed, feed, dispatch } = useStore();
   const [open, setOpen] = useState(null);
-  const [dark, setDark] = useState(false);
+  const [light, setLight] = useState(false);
   useEffect(() => {
-    try { if (localStorage.getItem('ziki-theme') === 'dark') setDark(true); } catch {}
+    try { if (localStorage.getItem('ziki-theme') === 'light') setLight(true); } catch {}
   }, []);
   useEffect(() => {
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    try { localStorage.setItem('ziki-theme', dark ? 'dark' : 'light'); } catch {}
-  }, [dark]);
+    document.documentElement.dataset.theme = light ? 'light' : 'dark';
+    try { localStorage.setItem('ziki-theme', light ? 'light' : 'dark'); } catch {}
+  }, [light]);
   const toggle = (k) => setOpen(open === k ? null : k);
   const outcome = feed.filter((u) => u.kind !== 'you' && u.kind !== 'agent').slice(0, 3);
 
@@ -35,7 +35,7 @@ export default function Shell({ children }) {
             <Link href="/issues"><Icon name="security" /> Security</Link>
           </nav>
           <div className="right">
-            <button className="pill" type="button" aria-pressed={dark} onClick={() => setDark(!dark)}>{dark ? 'Light mode' : 'Dark mode'}</button>
+            <button className="pill" type="button" aria-pressed={light} onClick={() => setLight(!light)}>{light ? 'Dark mode' : 'Light mode'}</button>
             <button className="pill" type="button" aria-expanded={open === 'agents'} onClick={() => toggle('agents')}>
               <Icon name="robot" /> Agents <Icon name="chev" />
             </button>

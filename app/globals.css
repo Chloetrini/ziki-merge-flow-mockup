@@ -1,34 +1,5 @@
-:root, :root[data-theme='light'] {
-  --bg: #f4f7fc;
-  --surface: #ffffff;
-  --surface-2: #eaf0fa;
-  --border: #d5dded;
-  --text: #0e1a33;
-  --muted: #3b4a66;
-  --muted-2: #56647f;
-  --blue: #2c5bd0;
-  --link: #1a4bd0;
-  --green: #0d7f50;
-  --green-bg: #e3f6ec;
-  --green-line: #9bd5b8;
-  --amber: #8f5f00;
-  --amber-bg: #fff3d1;
-  --amber-line: #e3c068;
-  --red: #c1302a;
-  --red-line: #eab0ac;
-  --blue-line: #b7c9ee;
-  --prop: #6a3cc9;
-  --prop-bg: #efe8ff;
-  --prop-line: #c9b6f5;
-  --banner-fg: #3a2a78;
-  --seg-fg: #4a2fa0;
-  --seg-on: #6a3cc9;
-  --tab-on-bg: #dfe9fb;
-  --tab-on-fg: #1a3f9a;
-  --count-bg: #dfe6f4;
-  color-scheme: light;
-}
-:root[data-theme='dark'] {
+:root, :root[data-theme='dark'] {
+  /* Ziki's own look */
   --bg: #070f22;
   --surface: #0e1a33;
   --surface-2: #1b2a47;
@@ -57,6 +28,37 @@
   --tab-on-fg: #bcd6ff;
   --count-bg: #22324f;
   color-scheme: dark;
+}
+:root[data-theme='light'] {
+  /* optional, for reading on a bright screen */
+  --bg: #f4f7fc;
+  --surface: #ffffff;
+  --surface-2: #eaf0fa;
+  --border: #d5dded;
+  --text: #0e1a33;
+  --muted: #3b4a66;
+  --muted-2: #56647f;
+  --blue: #2c5bd0;
+  --link: #1a4bd0;
+  --green: #0d7f50;
+  --green-bg: #e3f6ec;
+  --green-line: #9bd5b8;
+  --amber: #8f5f00;
+  --amber-bg: #fff3d1;
+  --amber-line: #e3c068;
+  --red: #c1302a;
+  --red-line: #eab0ac;
+  --blue-line: #b7c9ee;
+  --prop: #6a3cc9;
+  --prop-bg: #efe8ff;
+  --prop-line: #c9b6f5;
+  --banner-fg: #3a2a78;
+  --seg-fg: #4a2fa0;
+  --seg-on: #6a3cc9;
+  --tab-on-bg: #dfe9fb;
+  --tab-on-fg: #1a3f9a;
+  --count-bg: #dfe6f4;
+  color-scheme: light;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -342,4 +344,48 @@ details summary { cursor: pointer; color: var(--link); margin-top: .8rem; font-s
   .reply input { flex: 1 1 100%; }
   .prose { padding: 1rem 12px 3rem; }
   .cmp { display: block; overflow-x: auto; }
+}
+
+/* state icons (GitHub style) */
+.sicon { display: inline-flex; align-items: center; gap: .35rem; color: var(--muted); }
+.sicon svg { width: 18px; height: 18px; padding: 4px; box-sizing: content-box; border-radius: 50%; border: 1px solid currentColor; }
+.sicon.amber { color: var(--amber); }
+.sicon.red { color: var(--red); }
+.sicon.blue { color: var(--link); }
+.sword { font-size: .75rem; font-weight: 700; }
+.statswrap { margin: 1rem 1rem 0; }
+.glist li { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .2rem 0; }
+
+/* GitHub-style list for the new Inbox parts */
+.groups { gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.group { border: 0; border-radius: 0; background: transparent; }
+.group + .group { border-top: 1px solid var(--border); }
+.group-head { grid-template-columns: auto 1fr auto; gap: .7rem; padding: .6rem .9rem; background: var(--surface-2); }
+.grows { padding: 0 .9rem; }
+.grows li { grid-template-columns: auto 8px auto 1fr auto auto; gap: .6rem; align-items: start; padding: .7rem 0; }
+.grows li .ttl { font-weight: 600; }
+.stages { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--bg); }
+.stage { padding: .7rem .9rem; }
+.stage + .stage { border-top: 1px solid var(--border); }
+.stage-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.stage-head strong { min-width: 8.5rem; }
+.scounts { display: flex; gap: 1rem; flex-wrap: wrap; margin-right: auto; }
+.stage details summary { margin-top: .5rem; }
+.glist li { justify-content: flex-start; }
+@media (max-width: 800px) {
+  .grows li { grid-template-columns: auto auto 1fr; }
+  .group-head { grid-template-columns: auto 1fr; }
+}
+
+/* GitHub-style notification row */
+.unread { width: 8px; height: 8px; border-radius: 50%; background: var(--blue); margin-top: .55rem; }
+.rowmain .meta { color: var(--muted-2); font-size: .78rem; }
+.rowmain .ttl { font-size: .95rem; margin: .1rem 0; }
+.rowmain .reason { color: var(--muted); font-size: .8rem; }
+.when { color: var(--muted-2); font-size: .78rem; white-space: nowrap; margin-top: .15rem; }
+.grows li .rowbtns, .grows li input[type=checkbox], .grows li .sicon { margin-top: .1rem; }
+@media (max-width: 800px) {
+  .grows li { grid-template-columns: auto 8px auto 1fr; }
+  .grows li .when { display: none; }
+  .grows li .rowbtns { grid-column: 4; }
 }

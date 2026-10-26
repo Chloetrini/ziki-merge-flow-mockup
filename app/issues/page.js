@@ -3,13 +3,12 @@ import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '../../lib/store';
-import { REAL_ROWS, GATES, stageLabel } from '../../lib/data';
+import { REAL_ROWS, GATES } from '../../lib/data';
 import { Chip, Icon } from '../../components/Marks';
 import ReasonModal from '../../components/ReasonModal';
+import SendModal from '../../components/SendModal';
 
-const KIND = {
-  moved: ['On its way', 'k-moved'], waiting: ['Waiting', 'k-waiting'], reverted: ['Reverted', 'k-reverted'],
-};
+const KIND = { moved: 1, waiting: 1, reverted: 1 };
 
 // What each kind of stuck fix needs from a person: one title, one action.
 const GROUPS = {
@@ -32,27 +31,38 @@ function releaseLoc(f) {
   return { gate: 'production', kind: 'live' };
 }
 
-const TAG = { nudge: 'Waiting', unstick: 'Needs reviewer', reverted: 'Reverted' };
+// GitHub-style: a small icon says the state; the words are in the tooltip.
+const STATE = {
+  nudge: ['clock', 'Waiting 2+ days', 'amber'], unstick: ['eye', 'Needs a second reviewer', 'amber'],
+  reverted: ['undo', 'Reverted', 'red'], moved: ['arrow', 'On its way', 'blue'], waiting: ['clock', 'Waiting', 'amber'], live: ['check', 'Live', 'green'], needs: ['alert', 'Needs you', 'amber'],
+};
+function StateIcon({ kind, word }) {
+  const [icon, label, tone] = STATE[kind];
+  return <span className={`sicon ${tone}`} title={label} role="img" aria-label={label}><Icon name={icon} />{word && <span className="sword">{label}</span>}</span>;
+}
 
 // One button per fix, named for what it does. A reverted fix opens its note first.
-function RowAction({ f, dispatch, onReview }) {
-  if (f.needs === 'nudge') return <button className="btn small-btn" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Message maintainer</button>;
-  if (f.needs === 'unstick') return <button className="btn small-btn" onClick={() => dispatch({ type: 'unstick', id: f.id })}>Ask reviewer</button>;
+const REASON = { nudge: 'Waiting for the maintainer', unstick: 'Needs a second independent reviewer' };
+const where = (f) => GATES.find((g) => g.key === releaseLoc(f)?.gate)?.label || 'Review';
+
+function RowAction({ f, dispatch, onReview, onSend }) {
+  if (f.needs === 'nudge') return <button className="btn small-btn" onClick={() => onSend('nudge', [f])}>Message maintainer</button>;
+  if (f.needs === 'unstick') return <button className="btn small-btn" onClick={() => onSend('unstick', [f])}>Ask reviewer</button>;
   if (onReview) return <button className="btn small-btn" onClick={() => onReview(f)}>Review note</button>;
   return <button className="btn small-btn" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve note</button>;
 }
 
-function Group({ kind, items, dispatch, onReview }) {
+function Group({ kind, items, dispatch, onReview, onSend }) {
   const [open, setOpen] = useState(false);
   const [off, setOff] = useState({});
   const g = GROUPS[kind];
   const picked = items.filter((f) => !off[f.id]);
   const n = picked.length;
-  const run = (escalate) => dispatch({ type: 'bulk', needs: kind, ids: picked.map((f) => f.id), escalate });
+  const run = (escalate) => (kind === 'reverted' ? dispatch({ type: 'bulk', needs: kind, ids: picked.map((f) => f.id) }) : onSend(kind, picked, escalate));
   return (
     <li className="group">
       <div className="group-head">
-        <span className="gcount" aria-hidden="true">{items.length}</span>
+        <StateIcon kind={kind} />
         <strong className="gtitle">{g.title(items.length)}</strong>
         <div className="gbtns">
           {kind === 'reverted' && !open ? (
@@ -71,16 +81,17 @@ function Group({ kind, items, dispatch, onReview }) {
           {items.map((f) => (
             <li key={f.id}>
               <input type="checkbox" aria-label={`Include #${f.number}`} checked={!off[f.id]} onChange={() => setOff({ ...off, [f.id]: !off[f.id] })} />
-              <span className="vote">{f.votes}<small>▲</small></span>
+              <span className="unread" aria-label="Needs you" />
+              <StateIcon kind={kind} />
               <span className="rowmain">
+                <span className="meta">{where(f)} – #{f.number}</span>
                 <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
-                <span className="meta">#{f.number} {f.labels.join(' · ')} · {f.since}</span>
-                {kind === 'reverted' && <span className="note-line"><strong>Went wrong:</strong> {f.proposedReason} <strong>Rule:</strong> {f.proposedRule}</span>}
+                <span className="reason">{kind === 'reverted' ? <><strong>Went wrong:</strong> {f.proposedReason} <strong>Rule:</strong> {f.proposedRule}</> : REASON[kind]}</span>
               </span>
-              <span className={`rtag ${kind}`}>{TAG[kind]}</span>
+              <span className="when">{f.since}</span>
               <span className="rowbtns">
                 {kind === 'reverted' && <button className="btn ghost small-btn" onClick={() => onReview(f)}>Edit</button>}
-                <RowAction f={f} dispatch={dispatch} />
+                <RowAction f={f} dispatch={dispatch} onSend={onSend} />
               </span>
             </li>
           ))}
@@ -90,27 +101,12 @@ function Group({ kind, items, dispatch, onReview }) {
   );
 }
 
-function Stats() {
-  const { fixes } = useStore();
-  const moving = fixes.filter((f) => f.state === 'moving').length;
-  const live = fixes.filter((f) => f.state === 'live').length;
-  const reverted = fixes.filter((f) => f.steps.some((s) => s.status === 'reverted')).length;
-  const needs = fixes.filter((f) => f.state === 'needs-you').length;
-  return (
-    <ul className="stats" aria-label="Summary">
-      <li className={needs ? 'hot' : ''}><Link href="/issues"><strong>{needs}</strong><span>need you →</span></Link></li>
-      <li><strong>{moving}</strong><span>on their way</span></li>
-      <li><strong>{reverted}</strong><span>reverted</span></li>
-      <li><strong>{live}</strong><span>live</span></li>
-    </ul>
-  );
-}
-
 function NeedInput() {
   const { fixes, proposed, dispatch } = useStore();
   const gate = useSearchParams().get('gate');
   const gateLabel = GATES.find((g) => g.key === gate)?.label;
   const [modal, setModal] = useState(null);
+  const [send, setSend] = useState(null);
   const needs = proposed ? fixes.filter((f) => f.state === 'needs-you' && (!gateLabel || releaseLoc(f)?.gate === gate)) : [];
   const groups = ['nudge', 'unstick', 'reverted'].map((k) => [k, needs.filter((f) => f.needs === k)]).filter(([, items]) => items.length).sort((a, b) => b[1].length - a[1].length);
   return (
@@ -119,9 +115,8 @@ function NeedInput() {
         <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>
       ) : (
         <>
-          {proposed && <Stats />}
           {gateLabel && <p className="filterbar">Showing only <strong>{gateLabel}</strong> <Link href="/issues">Show all</Link></p>}
-          <ul className="groups">{groups.map(([k, items]) => <Group key={k} kind={k} items={items} dispatch={dispatch} onReview={setModal} />)}</ul>
+          <ul className="groups">{groups.map(([k, items]) => <Group key={k} kind={k} items={items} dispatch={dispatch} onReview={setModal} onSend={(kind, its, escalate) => setSend({ kind, items: its, escalate })} />)}</ul>
         </>
       )}
       {modal && (
@@ -134,6 +129,10 @@ function NeedInput() {
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
         />
       )}
+      {send && (
+        <SendModal kind={send.kind} items={send.items} escalate={send.escalate} onClose={() => setSend(null)}
+          onSend={() => { dispatch({ type: 'bulk', needs: send.kind, ids: send.items.map((f) => f.id), escalate: send.escalate }); setSend(null); }} />
+      )}
     </>
   );
 }
@@ -142,22 +141,21 @@ function NeedInput() {
 function Updates() {
   const { fixes, feed, dispatch } = useStore();
   const [modal, setModal] = useState(null);
+  const [send, setSend] = useState(null);
   const byId = Object.fromEntries(fixes.map((f) => [f.id, f]));
   const rows = feed.filter((u) => u.kind in KIND);
   return (
     <>
-      <Stats />
       <ul className="feed">
         {rows.slice(0, 12).map((u) => {
-          const [label, cls] = KIND[u.kind];
           const fix = byId[u.fixId];
           const needsYou = fix && fix.state === 'needs-you';
           return (
             <li key={u.id} className="update">
-              <span className={`kind ${cls}`}>{label}</span>
+              <StateIcon kind={u.kind} word />
               <span className="utext">{fix ? <Link href={`/issues/${fix.number}`}><span className="num">#{fix.number}</span> {fix.title}</Link> : <strong>{u.agent}</strong>}<span className="muted small"> · {u.text}</span></span>
               <span className="muted small">{u.time}</span>
-              {needsYou ? <RowAction f={fix} dispatch={dispatch} onReview={setModal} /> : <span />}
+              {needsYou ? <RowAction f={fix} dispatch={dispatch} onReview={setModal} onSend={(kind, its) => setSend({ kind, items: its })} /> : <span />}
             </li>
           );
         })}
@@ -172,40 +170,46 @@ function Updates() {
           onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
         />
       )}
+      {send && (
+        <SendModal kind={send.kind} items={send.items} onClose={() => setSend(null)}
+          onSend={() => { dispatch({ type: 'bulk', needs: send.kind, ids: send.items.map((f) => f.id) }); setSend(null); }} />
+      )}
     </>
   );
 }
 
-// Releases: where fixes are. Anything stuck links to the first tab.
+// Releases: one row per stage, like a GitHub list. Anything stuck links to the fixes that need you.
 function Releases() {
   const { fixes } = useStore();
   const placed = fixes.map((f) => ({ f, loc: releaseLoc(f) }));
+  const Count = ({ kind, n }) => { const [icon, label, tone] = STATE[kind]; return <span className={`sicon ${tone}`} title={label}><Icon name={icon} />{n} <span className="sword">{label.toLowerCase()}</span></span>; };
   return (
-    <div className="gates">
+    <ul className="stages">
       {GATES.map((g) => {
         const here = placed.filter((p) => p.loc && p.loc.gate === g.key);
         const count = (k) => here.filter((p) => p.loc.kind === k).length;
         const stuck = here.filter((p) => p.f.state === 'needs-you').length;
         const rest = here.filter((p) => p.loc.kind !== 'live');
         return (
-          <section key={g.key} className="card gate" aria-labelledby={`g-${g.key}`}>
-            <h3 id={`g-${g.key}`}>{g.label}</h3>
-            <ul className="gcounts">
-              <li><strong>{count('arriving')}</strong> on the way</li>
-              <li className={count('reverted') ? 'warn' : ''}><strong>{count('reverted')}</strong> reverted</li>
-              {g.key === 'production' && <li><strong>{count('live')}</strong> live</li>}
-            </ul>
-            {stuck > 0 ? <Link className="btn primary" href={`/issues?gate=${g.key}`}>{stuck} need you →</Link> : <p className="muted small">Nothing stuck.</p>}
+          <li key={g.key} className="stage">
+            <div className="stage-head">
+              <strong>{g.label}</strong>
+              <span className="scounts">
+                <Count kind="moved" n={here.filter((p) => p.loc.kind !== 'live' && p.f.state !== 'needs-you').length} />
+                {g.key === 'production' && <Count kind="live" n={count('live')} />}
+              </span>
+              {stuck > 0 && <Link className="btn small-btn" href={`/issues?gate=${g.key}`}>{stuck} need you →</Link>}
+            </div>
             {rest.length > 0 && (
               <details>
                 <summary>Show {rest.length}</summary>
-                <ul className="glist">{rest.map(({ f }) => <li key={f.id}><Link href={`/issues/${f.number}`}><span className="num">#{f.number}</span> {f.title}</Link></li>)}</ul>
+                <ul className="glist">{rest.map(({ f }) => <li key={f.id}><StateIcon kind={f.state === 'needs-you' ? 'needs' : 'moved'} /><Link href={`/issues/${f.number}`}><span className="num">#{f.number}</span> {f.title}</Link></li>)}</ul>
               </details>
             )}
-          </section>
+          </li>
         );
       })}
-    </div>
+    </ul>
   );
 }
 
@@ -263,7 +267,7 @@ function ListView({ status }) {
   const pick = (f) => status === 'all' || (status === 'progress' && (f.state === 'moving' || f.state === 'needs-you')) || (status === 'done' && f.state === 'live') || (status === 'open' && false);
   mine.filter(pick).forEach((f) => {
     const tone = f.state === 'live' ? 'green' : f.state === 'needs-you' ? (f.needs === 'reverted' ? 'red' : 'amber') : 'prop';
-    rows.push({ ...f, status: proposed ? stageLabel(f) : f.state === 'live' ? 'Done' : 'In progress', tone: proposed ? tone : 'green' });
+    rows.push({ ...f, status: f.state === 'live' ? 'Done' : 'In progress', tone: 'green' });
   });
   return (
     <>

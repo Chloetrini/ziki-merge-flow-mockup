@@ -17,7 +17,7 @@ export default function Proposal() {
       {MY_PROBLEM.map((t, i) => <p key={i}>{t}</p>)}
 
       <h2>The one workflow</h2>
-      <p>The time between a fix leaving Ziki and being live. Nothing else on Ziki changes: same layout, colours and fonts.</p>
+      <p>The time between a fix leaving Ziki and being live. Ziki&rsquo;s own look is unchanged: same layout, colours and fonts. Only the new parts are added, in the style of GitHub&rsquo;s notification list.</p>
 
       <h2>What I propose</h2>
       <ol>

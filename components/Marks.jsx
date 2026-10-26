@@ -27,6 +27,12 @@ export const Icon = ({ name }) => {
     product: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="1.5" /></>,
     marketing: <path d="M4 10v4h3l6 4V6L7 10zM17 9a4 4 0 010 6" />,
     security: <path d="M12 4l7 3v5c0 4-3 7-7 8-4-1-7-4-7-8V7z" />,
+    clock: <><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></>,
+    eye: <><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+    undo: <><path d="M9 7L5 11l4 4" /><path d="M5 11h9a5 5 0 010 8h-3" /></>,
+    arrow: <><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></>,
+    check: <path d="M5 12l4 4 10-10" />,
+    alert: <><circle cx="12" cy="12" r="8" /><path d="M12 8v5M12 16h.01" /></>,
   }[name];
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{p}</svg>

@@ -24,7 +24,7 @@ export default function Timeline({ fix, dispatch, onReason }) {
           <button type="button" className="tl-btn" aria-expanded={open === s.key} onClick={() => setOpen(open === s.key ? null : s.key)}>
             <span className="dot" aria-hidden="true">{ICON[s.status]}</span>
             <span className="tl-label">{s.label}</span>
-            <span className="tl-status">{WORD[s.status]} <span aria-hidden="true">{open === s.key ? '▾' : '▸'}</span></span>
+            <span className="tl-status">{s.status === 'active' && GATES.some((g) => g.key === s.key) ? 'Here now' : WORD[s.status]} <span aria-hidden="true">{open === s.key ? '▾' : '▸'}</span></span>
           </button>
           {open === s.key && (
             <div className="tl-detail">

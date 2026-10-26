@@ -143,13 +143,7 @@ function Updates() {
 }
 
 // Releases: Ziki's filter pills (one per stage), then a plain list. A fix is "at" a stage once it has been merged there.
-const STAGE_NOTE = {
-  central: 'Merged into central staging. Waiting to move on to staging.',
-  staging: 'Merged into staging. Waiting to go live.',
-  production: 'Going live now.',
-};
-const NEXT = { central: 'staging', staging: 'production', production: 'live' };
-
+// Releases: Ziki's filter pills (one per stage), then a plain list of rows, like GitHub's lists.
 function Releases() {
   const { fixes, dispatch, autoSend } = useStore();
   const [stage, setStage] = useState('central');
@@ -160,9 +154,12 @@ function Releases() {
   const inStage = (g) => placed.filter((p) => p.loc && p.loc.gate === g && p.loc.kind !== 'live').map((p) => p.f);
   const live = placed.filter((p) => p.loc && p.loc.kind === 'live').length;
   const rows = [...inStage(stage)].sort((a, b) => (b.state === 'needs-you') - (a.state === 'needs-you'));
-  const shown = all ? rows : rows.slice(0, 8);
+  // Before "Show all", mix in a few merged ones so both kinds are visible.
+  const stuck = rows.filter((f) => f.state === 'needs-you');
+  const merged = rows.filter((f) => f.state !== 'needs-you');
+  const first = [...stuck.slice(0, 5), ...merged.slice(0, stuck.length ? 3 : 8)];
+  const shown = all ? rows : first;
   const kindOf = (f) => (f.state !== 'needs-you' ? 'moved' : f.needs === 'reverted' ? 'reverted' : 'needs');
-  const metaOf = (f) => (f.state !== 'needs-you' ? `At ${GATES.find((g) => g.key === stage).label.toLowerCase()}, next: ${NEXT[stage]}` : f.needs === 'reverted' ? 'Rejected here' : REASON[f.needs]);
   const doSend = (kind, its) => (autoSend ? dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) }) : setSend({ kind, items: its }));
   return (
     <>
@@ -173,21 +170,20 @@ function Releases() {
           </button>
         ))}
       </span>
-      <p className="muted small" style={{ margin: '.5rem 0 0' }}>{STAGE_NOTE[stage]}</p>
       <ul className="rlist">
         {shown.map((f) => (
           <li key={f.id} className="rrow">
             <StateIcon kind={kindOf(f)} />
             <span className="rowmain">
               <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
-              <span className="meta">#{f.number} · {metaOf(f)} · {f.since}</span>
+              <span className="meta">#{f.number} · {f.state === 'needs-you' ? (f.needs === 'reverted' ? 'Rejected' : REASON[f.needs]) : 'Merged'} · {f.since}</span>
             </span>
             {f.state === 'needs-you' && <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={doSend} /></span>}
           </li>
         ))}
         {rows.length === 0 && <li className="rrow"><span className="muted">Nothing at this stage.</span></li>}
       </ul>
-      {rows.length > 8 && <button className="btn ghost" style={{ marginTop: '.6rem' }} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
+      {rows.length > first.length && <button className="btn ghost" style={{ marginTop: '.6rem' }} onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button>}
       <p className="muted small" style={{ marginTop: '.6rem' }}>{live} fixes are live. Finished work is not listed.</p>
       {modal && (
         <ReasonModal

@@ -17,7 +17,7 @@ export default function ReasonModal({ title, intro, confirmLabel, onConfirm, onC
         <span>Rule for the agents (added to agents.md so they do not repeat it)</span>
         <textarea value={rule} onChange={(e) => setRule(e.target.value)} rows={2} placeholder="For example: never merge more than 20 files at once." />
       </label>
-      <div className="row end">
+      <div className="rowend">
         <button className="btn ghost" onClick={onClose}>Cancel</button>
         <button className="btn primary" disabled={!ok} onClick={() => onConfirm(reason.trim(), rule.trim())}>{confirmLabel}</button>
       </div>

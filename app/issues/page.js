@@ -54,7 +54,7 @@ function RowAction({ f, dispatch, onReview, onSend }) {
   return <button className="btn small-btn" title="Approve the agent's note" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve</button>;
 }
 
-const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Ready to merge', review: 'Stuck on a reviewer' };
+const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Design change', review: 'Stuck on a reviewer' };
 
 // Need your input: what Ziki's real Inbox holds. An agent stops and asks its owner something.
 function NeedInput() {

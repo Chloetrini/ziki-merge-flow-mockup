@@ -13,7 +13,7 @@ const KIND = { moved: 1, waiting: 1, reverted: 1, live: 1 };
 
 // What each kind of stuck fix needs from a person: one title, one action.
 const GROUPS = {
-  nudge: { title: (n) => `${n} waiting at central staging 2+ days`, act: (n) => `Ask mergers (${n})`, secondary: (n) => `Escalate (${n})`, row: 'Message' },
+  nudge: { title: (n) => `${n} waiting at central staging 2+ days`, act: (n) => `Ask a merger about all ${n}`, secondary: (n) => `Escalate (${n})`, row: 'Message' },
   unstick: { title: (n) => `${n} need a second reviewer`, act: (n) => `Ask reviewers (${n})`, row: 'Ask' },
   reverted: { title: (n) => `${n} rejected, with a note from the agent`, act: (n) => `Approve notes (${n})`, row: 'Approve' },
 };
@@ -154,7 +154,7 @@ function Releases() {
         ))}
       </span>
       <span className="pillright">
-        {waiting.length > 0 && <button type="button" className="linkbtn" onClick={() => doSend('nudge', waiting)}>Ask mergers {waiting.length}</button>}
+        {waiting.length > 0 && <button type="button" className="linkbtn" title="Ask a merger about all of them" onClick={() => doSend('nudge', waiting)}>Ask all {waiting.length}</button>}
         <label className="switch" title="On: the agents ask the merger agents themselves. Off: you read each draft first.">
           <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
           <span className="track" aria-hidden="true" /> Auto-send

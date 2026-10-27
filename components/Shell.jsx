@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useStore } from '../lib/store';
-import { AGENTS } from '../lib/data';
+import { AGENTS, MERGERS } from '../lib/data';
 import { Icon, Chip } from './Marks';
 
 export default function Shell({ children }) {
@@ -47,9 +47,17 @@ export default function Shell({ children }) {
             {open === 'agents' && (
               <div className="menu" role="menu">
                 <h3>Project agents</h3>
-                {AGENTS.map((a) => (
+                {AGENTS.slice(0, 1).map((a) => (
                   <div className="mi" key={a.name} role="menuitem"><span className="avatar sm">{a.initials}</span><div><div>{a.name}</div><div className="muted small">{a.level}</div></div></div>
                 ))}
+                {proposed && (
+                  <>
+                    <h3>Merger agents <Chip /> · {MERGERS.filter((m) => m.online).length} of {MERGERS.length} online</h3>
+                    {MERGERS.map((m) => (
+                      <div className="mi" key={m.name} role="menuitem"><span className={`status ${m.online ? 'on' : ''}`} aria-hidden="true" /><div><div>{m.name}</div><div className="muted small">{m.online ? 'Online' : 'Offline'}</div></div></div>
+                    ))}
+                  </>
+                )}
                 <div className="mi"><Link href="/issues">Manage agents</Link></div>
               </div>
             )}

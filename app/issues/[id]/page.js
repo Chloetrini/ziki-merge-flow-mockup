@@ -37,7 +37,7 @@ export default function IssuePage({ params }) {
             <h2 id="says">What the agent says <Chip /></h2>
             <p className="says">&ldquo;{f.agentSays}&rdquo;</p>
             <div className="btns">
-              {f.needs === 'nudge' && (<><button className="btn primary" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Message the maintainer</button><button className="btn ghost" onClick={() => dispatch({ type: 'nudge', id: f.id, escalate: true })}>Escalate to the project lead</button></>)}
+              {f.needs === 'nudge' && (<><button className="btn primary" onClick={() => dispatch({ type: 'nudge', id: f.id })}>Ask a merger</button><button className="btn ghost" onClick={() => dispatch({ type: 'nudge', id: f.id, escalate: true })}>Escalate to the project lead</button></>)}
               {f.needs === 'unstick' && <button className="btn primary" onClick={() => dispatch({ type: 'unstick', id: f.id })}>Yes, ask someone else</button>}
               {f.needs === 'reverted' && <button className="btn primary" onClick={() => setModal('resubmit')}>Review the note</button>}
             </div>

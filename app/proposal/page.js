@@ -24,7 +24,7 @@ export default function Proposal() {
         <li><strong>Releases shows where every fix is after its pull request:</strong> Central staging, Staging, Production. Merged fixes and stuck ones sit side by side, and anything stuck has a button on its row.</li>
         <li><strong>Updates shows what has already happened:</strong> merged, moved to the next stage, live. It is history, so it has no buttons.</li>
         <li><strong>A rejected fix is explained by the agent, not by me.</strong> The agent writes what went wrong and a rule for next time. I review it and approve it.</li>
-        <li><strong>Messages to maintainers are small, so the agent can send them itself.</strong> One Auto-send switch: off, I read each draft first; on, the agents send everything.</li>
+        <li><strong>The work is done by agents, not by me.</strong> Reviewer agents say a fix is ready; merger agents do the merge. When a fix is stuck, I ask a merger or a reviewer. That is small, so the agent can do it itself: one Auto-send switch (off, I read each draft first; on, the agents send everything).</li>
         <li><strong>A journey on each fix after its pull request</strong>, one line per step, with a button on the step that is stuck or rejected.</li>
       </ol>
 
@@ -43,7 +43,7 @@ export default function Proposal() {
       <ol>
         <li>Switch between <strong>Current Ziki</strong> and <strong>With proposal</strong> at the top. New parts are marked <em>Proposed</em>.</li>
         <li>Open <strong>Releases</strong> and press each stage. Press <strong>Message</strong> on a waiting fix, or <strong>Review</strong> on a rejected one.</li>
-        <li>Turn on <strong>Auto-send</strong> to see the agents message every maintainer themselves.</li>
+        <li>Turn on <strong>Auto-send</strong> to see the agents ask every merger and reviewer themselves.</li>
         <li><strong>Need your input</strong> is Ziki&rsquo;s own Inbox, where an agent stops and asks me something. It is shown in the same row style.</li>
       </ol>
       <p className="muted small">A design mock-up with sample data. It is not connected to Ziki.</p>

@@ -463,3 +463,6 @@ details summary { cursor: pointer; color: var(--link); margin-top: .8rem; font-s
 
 /* Releases: pills on the left, shortcuts on the right */
 .pills + .pillright { float: right; margin-top: .25rem; }
+
+.status { width: 9px; height: 9px; border-radius: 50%; background: var(--muted-2); flex: none; margin: 0 .35rem; }
+.status.on { background: var(--gh-green); }

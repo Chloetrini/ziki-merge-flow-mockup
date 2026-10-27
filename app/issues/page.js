@@ -13,7 +13,7 @@ const KIND = { moved: 1, waiting: 1, reverted: 1, live: 1 };
 
 // What each kind of stuck fix needs from a person: one title, one action.
 const GROUPS = {
-  nudge: { title: (n) => `${n} waiting at central staging 2+ days`, act: (n) => `Message maintainer (${n})`, secondary: (n) => `Escalate (${n})`, row: 'Message' },
+  nudge: { title: (n) => `${n} waiting at central staging 2+ days`, act: (n) => `Ask mergers (${n})`, secondary: (n) => `Escalate (${n})`, row: 'Message' },
   unstick: { title: (n) => `${n} need a second reviewer`, act: (n) => `Ask reviewers (${n})`, row: 'Ask' },
   reverted: { title: (n) => `${n} rejected, with a note from the agent`, act: (n) => `Approve notes (${n})`, row: 'Approve' },
 };
@@ -44,17 +44,17 @@ function StateIcon({ kind, word }) {
 }
 
 // One button per fix, named for what it does. A reverted fix opens its note first.
-const REASON = { nudge: 'Waiting for the maintainer', unstick: 'Needs a second independent reviewer' };
+const REASON = { nudge: 'Waiting for a merger', unstick: 'Needs a second independent reviewer' };
 const where = (f) => GATES.find((g) => g.key === releaseLoc(f)?.gate)?.label || 'Review';
 
 function RowAction({ f, dispatch, onReview, onSend }) {
-  if (f.needs === 'nudge') return <button className="btn small-btn" title="Message the maintainer" onClick={() => onSend('nudge', [f])}>Message</button>;
+  if (f.needs === 'nudge') return <button className="btn small-btn" title="Ask a merger agent" onClick={() => onSend('nudge', [f])}>Ask</button>;
   if (f.needs === 'unstick') return <button className="btn small-btn" title="Ask a reviewer" onClick={() => onSend('unstick', [f])}>Ask</button>;
   if (onReview) return <button className="btn small-btn" title="Review the agent's note" onClick={() => onReview(f)}>Review</button>;
   return <button className="btn small-btn" title="Approve the agent's note" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve</button>;
 }
 
-const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Ready to merge' };
+const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Ready to merge', review: 'Stuck on a reviewer' };
 
 // Need your input: what Ziki's real Inbox holds. An agent stops and asks its owner something.
 function NeedInput() {
@@ -154,8 +154,8 @@ function Releases() {
         ))}
       </span>
       <span className="pillright">
-        {waiting.length > 0 && <button type="button" className="linkbtn" onClick={() => doSend('nudge', waiting)}>Message all {waiting.length}</button>}
-        <label className="switch" title="On: the agents message the maintainers themselves. Off: you read each draft first.">
+        {waiting.length > 0 && <button type="button" className="linkbtn" onClick={() => doSend('nudge', waiting)}>Ask mergers {waiting.length}</button>}
+        <label className="switch" title="On: the agents ask the merger agents themselves. Off: you read each draft first.">
           <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
           <span className="track" aria-hidden="true" /> Auto-send
         </label>

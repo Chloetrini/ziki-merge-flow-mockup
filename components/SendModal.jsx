@@ -10,12 +10,12 @@ const list = (items) => {
 // The agent drafts the message. The person reads it, edits it if they want, and sends.
 const DRAFT = {
   nudge: (items, escalate) => ({
-    to: escalate ? 'Project lead' : 'Central staging maintainer',
-    text: `Hi, ${items.length === 1 ? 'this fix has' : `these ${items.length} fixes have`} been waiting at central staging for 2+ days: ${list(items)}. ${escalate ? 'Escalating to you because there has been no answer. Could you help move them forward?' : 'Could you move them forward, or tell us what is blocking them?'} Thanks.`,
+    to: escalate ? 'Project lead' : 'Merger agents',
+    text: `Hi, ${items.length === 1 ? 'this fix has' : `these ${items.length} fixes have`} been waiting to be merged into central staging for 2+ days: ${list(items)}. ${escalate ? 'Escalating to you because there has been no answer. Could you help move them forward?' : 'Could a merger agent pick them up, or tell us what is blocking them?'} Thanks.`,
   }),
   unstick: (items) => ({
-    to: 'Independent reviewers',
-    text: `Hi, ${items.length === 1 ? 'this fix has' : `these ${items.length} fixes have`} passed checks and need a second independent review: ${list(items)}. Could one of you take ${items.length === 1 ? 'it' : 'them'}? Thanks.`,
+    to: 'Reviewer agents',
+    text: `Hi, ${items.length === 1 ? 'this fix has' : `these ${items.length} fixes have`} passed checks and ${items.length === 1 ? 'needs' : 'need'} a second independent review: ${list(items)}. Could one of you take ${items.length === 1 ? 'it' : 'them'}? Thanks.`,
   }),
 };
 

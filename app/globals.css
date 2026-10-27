@@ -460,3 +460,6 @@ details summary { cursor: pointer; color: var(--link); margin-top: .8rem; font-s
 .switch input:checked + .track { background: var(--gh-green); }
 .switch input:checked + .track::after { transform: translateX(12px); background: #fff; }
 .switch input:focus-visible + .track { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* Releases: pills on the left, shortcuts on the right */
+.pills + .pillright { float: right; margin-top: .25rem; }

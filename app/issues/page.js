@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useStore } from '../../lib/store';
 import { REAL_ROWS, GATES } from '../../lib/data';
+import Modal from '../../components/Modal';
 import { Chip, Icon } from '../../components/Marks';
 import ReasonModal from '../../components/ReasonModal';
 import SendModal from '../../components/SendModal';
@@ -53,67 +54,48 @@ function RowAction({ f, dispatch, onReview, onSend }) {
   return <button className="btn small-btn" title="Approve the agent's note" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve</button>;
 }
 
-const PILL = { nudge: 'Waiting', unstick: 'Needs reviewer', reverted: 'Rejected' };
+const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Ready to merge' };
 
-// Need your input: Ziki's filter pills, then plain rows, like GitHub's notifications.
+// Need your input: what Ziki's real Inbox holds. An agent stops and asks its owner something.
 function NeedInput() {
-  const { fixes, proposed, dispatch, autoSend } = useStore();
-  const gate = useSearchParams().get('gate');
-  const gateLabel = GATES.find((g) => g.key === gate)?.label;
-  const [modal, setModal] = useState(null);
-  const [send, setSend] = useState(null);
-  const [pick, setPick] = useState(null);
-  const needs = proposed ? fixes.filter((f) => f.state === 'needs-you' && (!gateLabel || releaseLoc(f)?.gate === gate)) : [];
-  const kinds = ['nudge', 'unstick', 'reverted'].filter((k) => needs.some((f) => f.needs === k));
-  const kind = kinds.includes(pick) ? pick : kinds[0];
-  const items = needs.filter((f) => f.needs === kind);
-  // Auto-send is off by default: the person reads the agent's draft first. Turning it on makes the agents send everything themselves.
-  const startSend = (k, its) => setSend({ kind: k, items: its });
-  if (!kinds.length) return <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>;
+  const { asks, proposed, dispatch } = useStore();
+  const [reply, setReply] = useState(null);
+  const [text, setText] = useState('');
+  if (!proposed || !asks.length) return <div className="empty"><strong>Nothing here right now.</strong>No agent is waiting on an answer.</div>;
+  const answer = (q, said) => dispatch({ type: 'answerAsk', id: q.id, text: `Answered #${q.number}: ${said}` });
   return (
     <>
-      {gateLabel && <p className="filterbar">Showing only <strong>{gateLabel}</strong> <Link href="/issues">Show all</Link></p>}
-      <div className="pillrow">
-        <span className="pills" role="group" aria-label="Reason">
-          {kinds.map((k) => (
-            <button key={k} type="button" className={kind === k ? 'on' : ''} aria-pressed={kind === k} onClick={() => setPick(k)}>
-              {PILL[k]} <span className="n">{needs.filter((f) => f.needs === k).length}</span>
-            </button>
-          ))}
-        </span>
-        <span className="pillright">
-          {kind !== 'reverted' && <button type="button" className="linkbtn" onClick={() => startSend(kind, items)}>{kind === 'nudge' ? 'Message all' : 'Ask for all'} {items.length}</button>}
-          <label className="switch" title="On: the agents send every message themselves, no clicking. Off: you read each draft first.">
-            <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
-            <span className="track" aria-hidden="true" /> Auto-send
-          </label>
-        </span>
-      </div>
       <ul className="rlist">
-        {items.map((f) => (
-          <li key={f.id} className="rrow">
-            <StateIcon kind={kind} />
+        {asks.map((q) => (
+          <li key={q.id} className="rrow">
+            <StateIcon kind="needs" />
             <span className="rowmain">
-              <Link className="ttl" href={`/issues/${f.number}`}>{f.title}</Link>
-              <span className="meta">#{f.number} · {kind === 'reverted' ? 'Note ready' : f.since}</span>
+              <Link className="ttl" href={`/issues/${q.number}`}>{q.title}</Link>
+              <span className="meta">#{q.number} · {ASK_LABEL[q.kind]} · {q.agent}: {q.text} · {q.since}</span>
             </span>
-            <span className="rowbtns"><RowAction f={f} dispatch={dispatch} onReview={setModal} onSend={startSend} /></span>
+            <span className="rowbtns">
+              {q.kind === 'question' || q.kind === 'blocker' ? (
+                <button className="btn small-btn" onClick={() => { setReply(q); setText(''); }}>Reply</button>
+              ) : (
+                <>
+                  <button className="btn small-btn" onClick={() => answer(q, 'yes')}>Yes</button>
+                  <button className="btn ghost small-btn" onClick={() => answer(q, 'no')}>No</button>
+                </>
+              )}
+            </span>
           </li>
         ))}
       </ul>
-      {modal && (
-        <ReasonModal
-          title={`#${modal.number} was rejected`}
-          reason={modal.proposedReason}
-          rule={modal.proposedRule}
-          confirmLabel="Approve and resubmit"
-          onClose={() => setModal(null)}
-          onConfirm={(reason, rule) => { dispatch({ type: 'resubmit', id: modal.id, reason, rule }); setModal(null); }}
-        />
-      )}
-      {send && (
-        <SendModal kind={send.kind} items={send.items} onClose={() => setSend(null)}
-          onSend={() => { dispatch({ type: 'bulk', needs: send.kind, ids: send.items.map((f) => f.id) }); setSend(null); }} />
+      {reply && (
+        <Modal title={`#${reply.number}`} onClose={() => setReply(null)}>
+          <p className="eyebrow">{reply.agent} asks</p>
+          <p className="says" style={{ fontSize: '.95rem' }}>{reply.text}</p>
+          <label className="field"><span className="sr">Your answer</span><textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="Your answer" /></label>
+          <div className="rowend">
+            <button className="btn ghost" onClick={() => setReply(null)}>Cancel</button>
+            <button className="btn primary" disabled={text.trim().length < 2} onClick={() => { answer(reply, text.trim()); setReply(null); }}>Send</button>
+          </div>
+        </Modal>
       )}
     </>
   );
@@ -159,6 +141,7 @@ function Releases() {
   const merged = rows.filter((f) => f.state !== 'needs-you');
   const first = [...stuck.slice(0, 5), ...merged.slice(0, stuck.length ? 3 : 8)];
   const shown = all ? rows : first;
+  const waiting = rows.filter((f) => f.state === 'needs-you' && f.needs === 'nudge');
   const kindOf = (f) => (f.state !== 'needs-you' ? 'moved' : f.needs === 'reverted' ? 'reverted' : 'needs');
   const doSend = (kind, its) => (autoSend ? dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) }) : setSend({ kind, items: its }));
   return (
@@ -169,6 +152,13 @@ function Releases() {
             {g.label} <span className="n">{inStage(g.key).length}</span>
           </button>
         ))}
+      </span>
+      <span className="pillright">
+        {waiting.length > 0 && <button type="button" className="linkbtn" onClick={() => doSend('nudge', waiting)}>Message all {waiting.length}</button>}
+        <label className="switch" title="On: the agents message the maintainers themselves. Off: you read each draft first.">
+          <input type="checkbox" role="switch" checked={autoSend} onChange={(e) => dispatch({ type: 'setAuto', value: e.target.checked })} />
+          <span className="track" aria-hidden="true" /> Auto-send
+        </label>
       </span>
       <ul className="rlist">
         {shown.map((f) => (
@@ -216,8 +206,8 @@ function Toast() {
 
 function InboxView() {
   const sp = useSearchParams();
-  const { proposed, fixes } = useStore();
-  const needsN = proposed ? fixes.filter((f) => f.state === 'needs-you').length : 0;
+  const { proposed, asks } = useStore();
+  const needsN = proposed ? asks.length : 0;
   const tab = sp.get('tab') || 'need';
   const TABS = [
     ['need', 'Need your input', needsN, false],
@@ -292,10 +282,10 @@ function ListView({ status }) {
 
 function IssuesInner() {
   const sp = useSearchParams();
-  const { fixes, proposed } = useStore();
+  const { fixes, proposed, asks } = useStore();
   const status = sp.get('status');
   const view = status || 'inbox';
-  const needs = proposed ? fixes.filter((f) => f.state === 'needs-you').length : 0;
+  const needs = proposed ? asks.length : 0;
   const pills = [['open', 'Open', 960], ['progress', 'In progress', 72], ['done', 'Done', 342], ['all', 'All', 1380]];
   return (
     <main className="wrap">

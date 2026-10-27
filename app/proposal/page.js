@@ -21,9 +21,10 @@ export default function Proposal() {
 
       <h2>What I propose</h2>
       <ol>
-        <li><strong>The Inbox shows only what needs me, as a few groups.</strong> Each group says why in one line and has one button: &ldquo;19 waiting at central staging 2+ days&rdquo; &rarr; <em>Message maintainer (19)</em>. Open a group to see its fixes as normal Ziki rows, and untick any you want to leave out. It still reads the same with 200 fixes.</li>
-        <li><strong>Every status has an action.</strong> In Updates, a fix that is waiting on me has its button on the row. Releases shows counts per stage, with a link to just the fixes stuck there. Finished work is only a number.</li>
-        <li><strong>A fix that is rejected is explained by the agent, not by me.</strong> The agent proposes what went wrong and a rule for next time. I approve it or edit it, and it is added to the Project notes.</li>
+        <li><strong>Releases shows where every fix is after its pull request:</strong> Central staging, Staging, Production. Merged fixes and stuck ones sit side by side, and anything stuck has a button on its row.</li>
+        <li><strong>Updates shows what has already happened:</strong> merged, moved to the next stage, live. It is history, so it has no buttons.</li>
+        <li><strong>A rejected fix is explained by the agent, not by me.</strong> The agent writes what went wrong and a rule for next time. I review it and approve it.</li>
+        <li><strong>Messages to maintainers are small, so the agent can send them itself.</strong> One Auto-send switch: off, I read each draft first; on, the agents send everything.</li>
         <li><strong>A journey on each fix after its pull request</strong>, one line per step, with a button on the step that is stuck or rejected.</li>
       </ol>
 
@@ -31,7 +32,7 @@ export default function Proposal() {
       <table className="cmp">
         <thead><tr><th>Already in Ziki</th><th>In this proposal</th></tr></thead>
         <tbody>
-          <tr><td>An Inbox where agents stop when they need a person</td><td>Kept. Extended to what happens after the merge.</td></tr>
+          <tr><td>An Inbox where agents stop and ask me something</td><td>Kept as it is. Only the row style changes.</td></tr>
           <tr><td>Agent decisions on an issue</td><td>Kept. One addition: a verdict that disagrees is checked against what is live.</td></tr>
           <tr><td>A GitHub PR box</td><td>Replaced by the journey.</td></tr>
           <tr><td>Notifications (comments)</td><td>Outcome updates are added.</td></tr>
@@ -41,8 +42,9 @@ export default function Proposal() {
       <h2>How to look at it</h2>
       <ol>
         <li>Switch between <strong>Current Ziki</strong> and <strong>With proposal</strong> at the top. New parts are marked <em>Proposed</em>.</li>
-        <li>In the Inbox, open <strong>Show</strong> on a group, untick a fix, then press the group&rsquo;s button.</li>
-        <li>Open <strong>Review notes</strong> to read what the agent says went wrong before approving. Then open <strong>Releases</strong> and press a stage&rsquo;s &ldquo;need you&rdquo; link.</li>
+        <li>Open <strong>Releases</strong> and press each stage. Press <strong>Message</strong> on a waiting fix, or <strong>Review</strong> on a rejected one.</li>
+        <li>Turn on <strong>Auto-send</strong> to see the agents message every maintainer themselves.</li>
+        <li><strong>Need your input</strong> is Ziki&rsquo;s own Inbox, where an agent stops and asks me something. It is shown in the same row style.</li>
       </ol>
       <p className="muted small">A design mock-up with sample data. It is not connected to Ziki.</p>
     </article>

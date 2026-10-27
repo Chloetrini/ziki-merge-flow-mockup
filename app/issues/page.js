@@ -54,7 +54,7 @@ function RowAction({ f, dispatch, onReview, onSend }) {
   return <button className="btn small-btn" title="Approve the agent's note" onClick={() => dispatch({ type: 'resubmit', id: f.id, reason: f.proposedReason, rule: f.proposedRule })}>Approve</button>;
 }
 
-const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', approval: 'Design change', review: 'Stuck on a reviewer' };
+const ASK_LABEL = { permission: 'Asks to start', question: 'Question', blocker: 'Blocked', scope: 'Bigger than the ticket', review: 'Stuck on a reviewer' };
 
 // Need your input: what Ziki's real Inbox holds. An agent stops and asks its owner something.
 function NeedInput() {
@@ -146,6 +146,7 @@ function Releases() {
   const doSend = (kind, its) => (autoSend ? dispatch({ type: 'bulk', needs: kind, ids: its.map((x) => x.id) }) : setSend({ kind, items: its }));
   return (
     <>
+      <div className="relbar">
       <span className="pills" role="group" aria-label="Stage">
         {GATES.map((g) => (
           <button key={g.key} type="button" className={stage === g.key ? 'on' : ''} aria-pressed={stage === g.key} onClick={() => { setStage(g.key); setAll(false); }}>
@@ -160,6 +161,7 @@ function Releases() {
           <span className="track" aria-hidden="true" /> Auto-send
         </label>
       </span>
+      </div>
       <ul className="rlist">
         {shown.map((f) => (
           <li key={f.id} className="rrow">

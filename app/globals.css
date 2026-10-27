@@ -462,7 +462,38 @@ details summary { cursor: pointer; color: var(--link); margin-top: .8rem; font-s
 .switch input:focus-visible + .track { outline: 2px solid var(--link); outline-offset: 2px; }
 
 /* Releases: pills on the left, shortcuts on the right */
-.pills + .pillright { float: right; margin-top: .25rem; }
 
 .status { width: 9px; height: 9px; border-radius: 50%; background: var(--muted-2); flex: none; margin: 0 .35rem; }
 .status.on { background: var(--gh-green); }
+
+/* Releases bar: pills on the left, shortcuts on the right, wraps on a phone */
+.relbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem .9rem; }
+.relbar .pills { max-width: 100%; }
+.relbar .pillright { flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .relbar { flex-direction: column; align-items: stretch; }
+  .relbar .pills { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .relbar .pills button { justify-content: center; white-space: nowrap; padding: .3rem .3rem; font-size: .72rem; }
+  .relbar .pillright { justify-content: space-between; }
+  .rrow .rowmain .ttl { overflow-wrap: anywhere; }
+}
+
+/* issue page like Ziki's real one: description left, cards right */
+.ipage { max-width: 1160px; }
+.ihead { display: flex; align-items: flex-start; gap: .9rem; margin-bottom: 1rem; }
+.iback { color: var(--link); font-size: 1.3rem; line-height: 1.2; margin-top: .25rem; }
+.ititle { flex: 1; min-width: 0; }
+.ihead .upvote { margin-bottom: 0; white-space: nowrap; }
+.igrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; align-items: start; }
+.imain, .iside { display: grid; gap: .8rem; min-width: 0; }
+.creator { font-size: .7rem; font-weight: 600; padding: .05rem .5rem; border-radius: 999px; background: var(--tab-on-bg); color: var(--tab-on-fg); margin-left: .3rem; }
+.prlink { color: var(--link); }
+.people .avatar { display: inline-grid; vertical-align: middle; margin-right: .35rem; }
+.sect details summary { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted-2); cursor: pointer; margin: 0; }
+.sect details[open] summary { margin-bottom: .6rem; }
+@media (max-width: 900px) {
+  .igrid { grid-template-columns: minmax(0, 1fr); }
+  .ihead { flex-wrap: wrap; }
+  .ititle { flex: 1 1 calc(100% - 2.6rem); }
+  .ihead .upvote { order: 3; margin-left: 2.2rem; }
+}
